@@ -1,6 +1,5 @@
-from parsex import LamPar, LamNode, NODES
-from lambex import TOKENS, Token
-import random
+from .parsex import LamPar, LamNode, NODES
+from .lambex import TOKENS, Token
 
 variable_anonymous_counter = 0
 
@@ -41,17 +40,20 @@ def convert_church(root):
 class ReductionException(Exception):
     pass
 
-def substitute_variable_name(tree, var, new_var):
+def substitute(tree, var, new_var, shadow=False):
     if not isinstance(tree, LamNode):
         return tree
 
-    if tree.node_type == NODES.L_VARIABLE and tree.values["name"].value == var:
-        return LamNode(tree.node_type, name=Token(TOKENS.T_VAR, new_var))
+    if shadow and tree.node_type == NODES.L_ABSTRACTION and tree.values["argument"] == var:
+        return tree
+
+    if tree == var:
+        return new_var
 
     node = LamNode(tree.node_type)
 
     for k, v in tree.values.items():
-        node[k] = substitute_variable_name(v, var, new_var)
+        node[k] = substitute(v, var, new_var, shadow=shadow)
 
     return node
 
@@ -72,7 +74,7 @@ def alpha_conversion(tree):
     if argument.node_type != NODES.L_VARIABLE:
         raise ReductionException("Expected a variable as argument type to abstraction in alpha-conversion, recieved a %s." % argument.node_type.name)
 
-    print(substitute_variable_name(tree, "x", "0").reconstruct())
+    print(substitute(tree, Token(TOKENS.T_VAR, name="x"), Token(TOKENS.T_VAR, name="0")).reconstruct())
 
 
 def beta_reduction(tree):
@@ -80,7 +82,19 @@ def beta_reduction(tree):
     reduce applications, (λx.a) b -> a[x := b].
     a tree is beta-normal when no further beta-reduction can take place.
     '''
-    pass
+    if not isinstance(tree, LamNode):
+        return tree
+
+    node = LamNode(tree.node_type)
+    
+    for k, v in tree.values.items():
+        node[k] = beta_reduction(v)
+    
+    if node.node_type == NODES.L_APPLICATION and node.values["abstraction"].node_type == NODES.L_ABSTRACTION:
+        if "argument" in node.values["abstraction"].values:
+            node = substitute(node, node.values["abstraction"].values["argument"], node.values["parameter"], shadow=True).values["abstraction"].values["body"]
+    
+    return node
 
 def is_beta_normal(tree):
     '''
@@ -100,3 +114,5 @@ if __name__ == "__main__":
     
     print(LamPar("\\\\ x").parse())
     print(LamPar("λ λ 1 (λ (λ 2 1 4) 1 x)").parse().reconstruct())
+
+    print(beta_reduction(LamPar("(λx.x) y").parse()))

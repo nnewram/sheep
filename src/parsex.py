@@ -29,9 +29,8 @@ testcase:
 }
 '''
 
-import lambex
+from . import lambex
 import enum
-import copy
 
 def objify_node(root):
     if not root:
@@ -59,7 +58,7 @@ class LamNode:
         if self.node_type == NODES.L_ABSTRACTION:
             return "λ%s.%s" % (self.values["argument"].reconstruct(), self.values["body"].reconstruct())
         elif self.node_type == NODES.L_APPLICATION:
-            return "(%s %s)" % (self.values["abstraction"].reconstruct(), self.values["parameter"].reconstruct())
+            return "(%s) %s" % (self.values["abstraction"].reconstruct(), self.values["parameter"].reconstruct())
         elif self.node_type == NODES.L_VARIABLE:
             return self.values["name"].value
 
@@ -73,6 +72,11 @@ class LamNode:
         for k, v in kw.items():
             self.values[k] = v
     
+    def __eq__(self, other):
+        if not isinstance(other, LamNode):
+            return False
+        return self.node_type == other.node_type and self.values == other.values
+
     def __repr__(self):
         return self.reconstruct()
 

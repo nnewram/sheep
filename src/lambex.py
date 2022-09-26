@@ -69,6 +69,8 @@ class Token:
         self.value = value
 
     def __eq__(self, other):
+        if not isinstance(other, Token):
+            return False
         return self.token_type == other.token_type and self.value == other.value
     
     def __repr__(self):
